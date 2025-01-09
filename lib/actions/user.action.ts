@@ -1,9 +1,12 @@
 "use server"
 import { ID, Query } from "node-appwrite"
-import { createAdminClient } from "../appwrite"
+import { createAdminClient, createSessionClient } from "../appwrite"
 import { appwriteConfig } from "../appwrite/config"
-import { parseStringyfy } from "../utils"
+import { parseStringify } from "../utils"
 import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { error } from "console"
+import { avatarPlaceholderUrl } from "@/constants"
 
 export const getUserByMail = async (email: string) => {
     const {databases} = await createAdminClient()
@@ -49,12 +52,12 @@ export const createAccount = async ({email,fullName}: {email:string, fullName: s
             {
                 fullName,
                 email,
-                avatar: "https://img.freepik.com/free-psd/3d-illustration-person-with-sunglasses_23-2149436188.jpg",
+                avatar: avatarPlaceholderUrl,
                 accountId
             }
         )
     }
-    return parseStringyfy({accountId})
+    return parseStringify({accountId})
 }
 
 export const verifySecret = async ({accountId, password}: {accountId: string, password: string}) => {
@@ -67,8 +70,49 @@ export const verifySecret = async ({accountId, password}: {accountId: string, pa
             sameSite: "strict",
             secure: true
         })
-        return parseStringyfy({sessionId: session.$id})
+        return parseStringify({sessionId: session.$id})
     } catch (error) {
         handleError(error, "Failed to verify the OTP")
+    }
+}
+
+export const getCurrentUser = async () => {
+    const {databases, account} = await createSessionClient();
+
+    const result = await account.get()
+    
+    const user = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId,
+        [Query.equal("accountId", result.$id)]
+    )
+
+    if(user.total <= 0) return null
+    return parseStringify(user.documents[0])
+}
+
+export const signOutUser = async () => {
+    const {account} = await createSessionClient()
+    try {
+        await account.deleteSession("current");
+        (await cookies()).delete("appwrite-session")
+    } catch (error) {
+        handleError(error, "Failed to sign out User")
+    }finally{
+        redirect("/sign-in")
+    }
+}
+
+export const signInUser = async (email: string) => {
+    try {
+       const existingUser = await getUserByMail(email) 
+    //    user exist then send OTP
+    if(existingUser){
+        await sendEmailOTP(email);
+        return parseStringify({accountId: existingUser.accountId})
+    }
+    return parseStringify({accountId: null , error: "User not Found"})
+    } catch (error) {
+       handleError(error, "Failed to sign in User") 
     }
 }
