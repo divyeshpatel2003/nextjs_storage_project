@@ -17,7 +17,6 @@ interface Props {
 }
 
 const FileUploader = ({ ownerId, accountId, className }: Props) => {
-  console.log(ownerId)
   const path = usePathname();
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);

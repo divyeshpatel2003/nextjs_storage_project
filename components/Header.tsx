@@ -7,17 +7,16 @@ import { signOutUser } from "@/lib/actions/user.action";
 
 interface Props {
   accountId : string,
-  userId: string
+  $id: string
 }
 
-const Header = ({accountId,userId} : Props) => {
-  console.log(userId)
+const Header = ({accountId,$id} : Props) => {
   return (
     <header className="header">
       <Search />
 
       <div className="header-wrapper">
-        <FileUploader ownerId={userId} accountId={accountId}/>
+        <FileUploader ownerId={$id} accountId={accountId}/>
         <Button type="submit" className="sign-out-button" onClick={async () =>{
           "use server"
             await signOutUser()
